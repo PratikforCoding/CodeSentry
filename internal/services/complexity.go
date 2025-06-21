@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"github.com/PratikforCoding/CodeSentry/internal/models"
 	"github.com/PratikforCoding/CodeSentry/internal/utils"
 )
 
@@ -47,10 +48,10 @@ func (ca *ComplexityAnalyzer) CalculateNestingDepth(code string) int {
 	return parser.AnalyzeNestingDepth()
 }
 
-func (ca *ComplexityAnalyzer) CountFunctions(code string) int {
+func (ca *ComplexityAnalyzer) CountFunctions(code string, language models.Language) int {
 	parser := utils.NewParser(code)
 	parser.Tokenize()
 
-	functionTokens := parser.GetFunctionTokens()
+	functionTokens := parser.GetFunctionTokens(language)
 	return len(functionTokens)
 }

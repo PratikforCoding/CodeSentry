@@ -305,36 +305,38 @@ func (p *Parser) GetComplexityTokens() []models.Token {
 	return result
 }
 
-func (p *Parser) GetFunctionTokens() []models.Token {
+func (p *Parser) GetFunctionTokens(language models.Language) []models.Token {
 	var result []models.Token
+	seenPositions := make(map[int]bool)
 
-	for _, pattern := range FunctionPatterns {
-		matches := pattern.FindAllStringSubmatch(p.code, -1)
-		for _, match := range matches {
-			if len(match) > 0 {
-				matchStart := strings.Index(p.code, match[0])
-				if matchStart != -1 {
-					line, col := p.getLineAndColumn(matchStart)
-					token := models.Token{
-						Type:  models.KEYWORD,
-						Value: match[0],
-						Line:  line,
-						Col:   col,
-					}
-					result = append(result, token)
-				}
-			}
-		}
+	langKey := strings.ToLower(string(language))
+	patterns, ok := FunctionPatterns[langKey]
+	if !ok {
+		// Unsupported language, return empty slice
+		return result
 	}
 
-	functionKeywords := []string{"func", "function", "def", "method", "constructor", "class"}
-	for _, keyword := range functionKeywords {
-		tokens := p.GetTokensByValue(keyword)
-		for _, token := range tokens {
-			// Check if this is actually a function declaration
-			if p.isFunctionDeclaration(token) {
-				result = append(result, token)
+	for _, pattern := range patterns {
+		matches := pattern.FindAllStringSubmatchIndex(p.code, -1)
+		for _, match := range matches {
+			start := match[0]
+			end := match[1]
+
+			if seenPositions[start] {
+				continue
 			}
+			seenPositions[start] = true
+
+			line, col := p.getLineAndColumn(start)
+			tokenValue := p.code[start:end]
+
+			token := models.Token{
+				Type:  models.KEYWORD,
+				Value: tokenValue,
+				Line:  line,
+				Col:   col,
+			}
+			result = append(result, token)
 		}
 	}
 
@@ -455,27 +457,28 @@ func (p *Parser) getLineAndColumn(pos int) (int, int) {
 	return line, col
 }
 
-func (p *Parser) isFunctionDeclaration(token models.Token) bool {
-	// Find the token in the original code and check surrounding context
-	codeLines := strings.Split(p.code, "\n")
-	if token.Line <= len(codeLines) {
-		line := codeLines[token.Line-1]
+/*
+	func (p *Parser) isFunctionDeclaration(token models.Token) bool {
+		// Find the token in the original code and check surrounding context
+		codeLines := strings.Split(p.code, "\n")
+		if token.Line <= len(codeLines) {
+			line := codeLines[token.Line-1]
 
-		// Check if the line contains function declaration patterns
-		for _, pattern := range FunctionPatterns {
-			if pattern.MatchString(line) {
-				return true
+			// Check if the line contains function declaration patterns
+			for _, pattern := range FunctionPatterns {
+				if pattern.MatchString(line) {
+					return true
+				}
 			}
+
+			// Check if followed by identifier and parentheses
+			return strings.Contains(line, token.Value) &&
+				strings.Contains(line, "(") &&
+				strings.Index(line, token.Value) < strings.Index(line, "(")
 		}
-
-		// Check if followed by identifier and parentheses
-		return strings.Contains(line, token.Value) &&
-			strings.Contains(line, "(") &&
-			strings.Index(line, token.Value) < strings.Index(line, "(")
+		return false
 	}
-	return false
-}
-
+*/
 func (p *Parser) isRiskyContext(token models.Token, keyword string) bool {
 	// Get the line containing the token
 	codeLines := strings.Split(p.code, "\n")
@@ -530,10 +533,6 @@ func (p *Parser) GetVulnerabilityScore() int {
 	}
 
 	return score
-}
-
-func (p *Parser) GetFunctionCount() int {
-	return len(p.GetFunctionTokens())
 }
 
 func (p *Parser) GetVulnerabilityByCategory() map[string]map[string][]models.Token {

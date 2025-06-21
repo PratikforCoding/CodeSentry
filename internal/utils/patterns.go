@@ -59,38 +59,82 @@ var SecurityPatterns = map[string]*regexp.Regexp{
 	"sensitive_data_log": regexp.MustCompile(`(?i)(log|logger)\.(info|debug|error).*\(.*password`),
 }
 
-var FunctionPatterns = map[string]*regexp.Regexp{
-	// Traditional function keywords
-	"function_keyword": regexp.MustCompile(`(?i)\b(func|function|def|method|sub|procedure)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+var FunctionPatterns = map[string][]*regexp.Regexp{
+	"javascript": {
+		// Named function declarations
+		regexp.MustCompile(`(?m)^\s*function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(`),
 
-	// Java method declarations (comprehensive)
-	"java_method_public":    regexp.MustCompile(`(?i)public\s+(static\s+)?([a-zA-Z_][a-zA-Z0-9_<>]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
-	"java_method_private":   regexp.MustCompile(`(?i)private\s+(static\s+)?([a-zA-Z_][a-zA-Z0-9_<>]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
-	"java_method_protected": regexp.MustCompile(`(?i)protected\s+(static\s+)?([a-zA-Z_][a-zA-Z0-9_<>]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
-	"java_method_default":   regexp.MustCompile(`(?i)(static\s+)?([a-zA-Z_][a-zA-Z0-9_<>]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*\{`),
-	"java_constructor":      regexp.MustCompile(`(?i)(public|private|protected)?\s*([A-Z][a-zA-Z0-9_]*)\s*\([^)]*\)\s*\{`),
-	"java_abstract_method":  regexp.MustCompile(`(?i)abstract\s+([a-zA-Z_][a-zA-Z0-9_<>]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
-	"java_interface_method": regexp.MustCompile(`(?i)(default\s+)?([a-zA-Z_][a-zA-Z0-9_<>]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*;`),
+		// Function expressions assigned to variables (const/let/var)
+		regexp.MustCompile(`(?m)^\s*(const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*function\s*\(`),
 
-	// JavaScript function expressions and arrow functions
-	"js_function_expr":     regexp.MustCompile(`(?i)(const|let|var)?\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*[:=]\s*(function\s*\(|.*=>\s*[{(])`),
-	"js_arrow_function":    regexp.MustCompile(`(?i)(const|let|var)?\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*\([^)]*\)\s*=>`),
-	"js_method_definition": regexp.MustCompile(`(?i)([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*\{`),
+		// Arrow functions assigned to variables
+		regexp.MustCompile(`(?m)^\s*(const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*\([^)]*\)\s*=>`),
 
-	// Python function patterns
-	"python_function":       regexp.MustCompile(`(?i)def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
-	"python_async_function": regexp.MustCompile(`(?i)async\s+def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
-	"python_lambda":         regexp.MustCompile(`(?i)lambda\s+[^:]*:`),
+		// Class methods (inside class, simplified)
+		// regexp.MustCompile(`(?m)^\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\([^)]*\)\s*\{`),
+	},
 
-	// Go function patterns
-	"go_function": regexp.MustCompile(`(?i)func\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
-	"go_method":   regexp.MustCompile(`(?i)func\s+\([^)]*\)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+	"python": {
+		// Synchronous function definitions
+		regexp.MustCompile(`(?m)^\s*def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
 
-	// Getter/Setter patterns
-	"getter_setter": regexp.MustCompile(`(?i)(get|set)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+		// Asynchronous function definitions
+		regexp.MustCompile(`(?m)^\s*async\s+def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
 
-	// Async function patterns
-	"async_function": regexp.MustCompile(`(?i)(async\s+)?(function|def)\s+([a-zA-Z_][a-zA-Z0-9_]*)`),
+		// Note: Lambdas are anonymous, usually not counted as named functions
+	},
+
+	"go": {
+		// Function declarations
+		regexp.MustCompile(`(?m)^\s*func\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+
+		// Method declarations with receiver
+		regexp.MustCompile(`(?m)^\s*func\s+\([^)]*\)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+	},
+
+	"java": {
+		// Public, private, protected methods (with optional static)
+		regexp.MustCompile(`(?m)^\s*(public|private|protected)?\s*(static\s+)?[a-zA-Z0-9_<>\[\]]+\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+
+		// Constructors (class name with parentheses and brace)
+		regexp.MustCompile(`(?m)^\s*(public|private|protected)?\s*([A-Z][a-zA-Z0-9_]*)\s*\([^)]*\)\s*\{`),
+
+		// Abstract methods
+		regexp.MustCompile(`(?m)^\s*abstract\s+[a-zA-Z0-9_<>\[\]]+\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+
+		// Interface methods (default or not)
+		regexp.MustCompile(`(?m)^\s*(default\s+)?[a-zA-Z0-9_<>\[\]]+\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*;`),
+	},
+
+	//"csharp": {
+	//	// Similar to Java method declarations
+	//	regexp.MustCompile(`(?m)^\s*(public|private|protected|internal)?\s*(static\s+)?[a-zA-Z0-9_<>\[\]]+\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+	//},
+	//
+	//"php": {
+	//	// Function declarations
+	//	regexp.MustCompile(`(?m)^\s*function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+	//
+	//	// Methods inside classes
+	//	regexp.MustCompile(`(?m)^\s*(public|private|protected)?\s*function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+	//},
+	//
+	//"ruby": {
+	//	// Method definitions
+	//	regexp.MustCompile(`(?m)^\s*def\s+([a-zA-Z_][a-zA-Z0-9_!?=]*)`),
+	//},
+	//
+	//"swift": {
+	//	// Function declarations
+	//	regexp.MustCompile(`(?m)^\s*func\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+	//},
+	//
+	//"kotlin": {
+	//	// Function declarations
+	//	regexp.MustCompile(`(?m)^\s*fun\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(`),
+	//},
+
+	// Add more languages and patterns as needed
 }
 
 var StylePatterns = map[string]*regexp.Regexp{
