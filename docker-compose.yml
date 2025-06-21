@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  codesentry-api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ENVIRONMENT=development
+      - MONGO_URI=mongodb://root:example@mongo:27017/codesentry?authSource=admin
+    depends_on:
+      - mongo
+    networks:
+      - app-network
+
+  mongo:
+    image: mongo:6.0
+    container_name: codesentry-mongo-1
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+
+volumes:
+  mongo_data:
+
+networks:
+  app-network:
+    driver: bridge
