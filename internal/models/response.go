@@ -68,8 +68,3 @@ type Analysis struct {
 	Tags      []string           `json:"tags,omitempty" bson:"tags,omitempty"`
 	UpdatedAt *time.Time         `json:"updated_at,omitempty" bson:"updated_at,omitempty"`
 }
-
-type UpdateAnalysisRequest struct {
-	Title string   `json:"title"`
-	Tags  []string `json:"tags"`
-}

@@ -75,7 +75,7 @@ func (as *AnalyzerService) calculateMetrics(code string) models.CodeMetrics {
 
 	totalLines, blankLines, commentLines := utils.CountLines(code)
 	functions := as.complexityAnalyzer.CountFunctions(code, language)
-	nestingDepth := as.complexityAnalyzer.CalculateNestingDepth(code)
+	nestingDepth := as.complexityAnalyzer.CalculateNestingDepth(code, language)
 	complexity := as.complexityAnalyzer.AnalyzeComplexity(code)
 
 	linesOfCode := totalLines - blankLines - commentLines

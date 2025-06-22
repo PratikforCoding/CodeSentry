@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"github.com/PratikforCoding/CodeSentry/internal/models"
 	"github.com/PratikforCoding/CodeSentry/internal/utils"
 )
@@ -13,7 +12,6 @@ func NewComplexityAnalyzer() *ComplexityAnalyzer {
 }
 
 func (ca *ComplexityAnalyzer) AnalyzeComplexity(code string) int {
-	fmt.Println("🔍 DEBUG: Creating parser...")
 	parser := utils.NewParser(code)
 	_ = parser.Tokenize()
 	complexity := 1
@@ -42,10 +40,10 @@ func (ca *ComplexityAnalyzer) AnalyzeComplexity(code string) int {
 	return complexity
 }
 
-func (ca *ComplexityAnalyzer) CalculateNestingDepth(code string) int {
+func (ca *ComplexityAnalyzer) CalculateNestingDepth(code string, language models.Language) int {
 	parser := utils.NewParser(code)
 	parser.Tokenize()
-	return parser.AnalyzeNestingDepth()
+	return parser.AnalyzeNestingDepth(language)
 }
 
 func (ca *ComplexityAnalyzer) CountFunctions(code string, language models.Language) int {

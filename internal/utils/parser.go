@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/PratikforCoding/CodeSentry/internal/models"
+	"log"
 	"regexp"
 	"strings"
 	"unicode"
@@ -16,6 +17,7 @@ type Parser struct {
 }
 
 func NewParser(code string) *Parser {
+	log.Println("Debug: creating tokenizer")
 	return &Parser{
 		code:   code,
 		tokens: make([]models.Token, 0),
@@ -25,95 +27,242 @@ func NewParser(code string) *Parser {
 }
 
 func (p *Parser) Tokenize() []models.Token {
+	p.tokens = []models.Token{}
 	runes := []rune(p.code)
 
 	for i := 0; i < len(runes); i++ {
 		char := runes[i]
+
+		// Handle newlines
 		if char == '\n' {
 			p.line++
 			p.column = 1
 			continue
 		}
 
+		// Handle whitespace
 		if unicode.IsSpace(char) {
 			p.column++
 			continue
 		}
 
+		// Handle comments
 		if char == '/' && i+1 < len(runes) {
+			// Single-line comment
 			if runes[i+1] == '/' {
 				start := i
+				startCol := p.column
 				for i < len(runes) && runes[i] != '\n' {
 					i++
 				}
-				p.addToken(models.COMMENT, string(runes[start:i]))
-				i--
+				p.addTokenWithPosition(models.COMMENT, string(runes[start:i]), p.line, startCol)
+				i-- // Adjust because outer loop will increment
+				p.column = startCol + (i - start)
 				continue
-			} else if runes[i+1] == '*' {
+			}
+			// Multi-line comment
+			if runes[i+1] == '*' {
 				start := i
-				i += 2
-				for i+1 < len(runes) && !(runes[i] == '*' && runes[i+1] == '/') {
+				startLine := p.line
+				startCol := p.column
+				i += 2 // Skip /*
+
+				for i+1 < len(runes) {
+					if runes[i] == '*' && runes[i+1] == '/' {
+						i += 2 // Skip */
+						break
+					}
 					if runes[i] == '\n' {
 						p.line++
 						p.column = 1
+					} else {
+						p.column++
 					}
 					i++
 				}
-				i += 2
-				p.addToken(models.COMMENT, string(runes[start:i]))
+				p.addTokenWithPosition(models.COMMENT, string(runes[start:i]), startLine, startCol)
+				i-- // Adjust for outer loop
 				continue
 			}
 		}
 
+		// Handle Python # comments
+		if char == '#' {
+			start := i
+			startCol := p.column
+			for i < len(runes) && runes[i] != '\n' {
+				i++
+			}
+			p.addTokenWithPosition(models.COMMENT, string(runes[start:i]), p.line, startCol)
+			i-- // Adjust because outer loop will increment
+			p.column = startCol + (i - start)
+			continue
+		}
+
+		// Handle string literals
 		if char == '"' || char == '\'' {
 			quote := char
 			start := i
-			i++
+			startCol := p.column
+			i++ // Skip opening quote
+
 			for i < len(runes) && runes[i] != quote {
-				if runes[i] == '\\' {
+				if runes[i] == '\\' && i+1 < len(runes) {
+					i += 2 // Skip escaped character
+				} else {
+					if runes[i] == '\n' {
+						p.line++
+						p.column = 1
+					} else {
+						p.column++
+					}
 					i++
 				}
-				i++
 			}
-			i++
-			p.addToken(models.LITERAL, string(runes[start:i]))
+
+			if i < len(runes) {
+				i++ // Skip closing quote
+			}
+
+			p.addTokenWithPosition(models.LITERAL, string(runes[start:i]), p.line, startCol)
+			i-- // Adjust for outer loop
 			continue
 		}
 
-		if unicode.IsDigit(char) {
+		// Handle numeric literals
+		if unicode.IsDigit(char) || (char == '.' && i+1 < len(runes) && unicode.IsDigit(runes[i+1])) {
 			start := i
-			for i < len(runes) && (unicode.IsDigit(runes[i]) || runes[i] == '.') {
-				i++
+			startCol := p.column
+
+			// Handle different number formats
+			if char == '0' && i+1 < len(runes) {
+				next := runes[i+1]
+				if next == 'x' || next == 'X' {
+					// Hexadecimal
+					i += 2
+					for i < len(runes) && (unicode.IsDigit(runes[i]) ||
+						(runes[i] >= 'a' && runes[i] <= 'f') ||
+						(runes[i] >= 'A' && runes[i] <= 'F')) {
+						i++
+					}
+				} else if next == 'b' || next == 'B' {
+					// Binary
+					i += 2
+					for i < len(runes) && (runes[i] == '0' || runes[i] == '1') {
+						i++
+					}
+				} else if next == 'o' || next == 'O' {
+					// Octal
+					i += 2
+					for i < len(runes) && runes[i] >= '0' && runes[i] <= '7' {
+						i++
+					}
+				}
 			}
-			p.addToken(models.LITERAL, string(runes[start:i]))
+
+			if i == start || (i == start+1 && char == '0') {
+				// Regular decimal number
+				hasDot := false
+				for i < len(runes) && (unicode.IsDigit(runes[i]) || runes[i] == '.') {
+					if runes[i] == '.' {
+						if hasDot {
+							break // Second dot, stop parsing
+						}
+						hasDot = true
+					}
+					i++
+				}
+
+				// Handle scientific notation
+				if i < len(runes) && (runes[i] == 'e' || runes[i] == 'E') {
+					i++
+					if i < len(runes) && (runes[i] == '+' || runes[i] == '-') {
+						i++
+					}
+					for i < len(runes) && unicode.IsDigit(runes[i]) {
+						i++
+					}
+				}
+			}
+
+			p.addTokenWithPosition(models.LITERAL, string(runes[start:i]), p.line, startCol)
+			i-- // Adjust for outer loop
+			p.column = startCol + (i - start)
 			continue
 		}
 
+		// Handle identifiers and keywords
 		if unicode.IsLetter(char) || char == '_' {
 			start := i
-			for i < len(runes) && (unicode.IsLetter(runes[i]) || unicode.IsDigit(runes[i]) || runes[i] == '_') {
+			startCol := p.column
+
+			for i < len(runes) && (unicode.IsLetter(runes[i]) ||
+				unicode.IsDigit(runes[i]) || runes[i] == '_') {
 				i++
 			}
+
 			word := string(runes[start:i])
+
 			if p.isKeyword(word) {
-				p.addToken(models.KEYWORD, word)
+				p.addTokenWithPosition(models.KEYWORD, word, p.line, startCol)
 			} else {
-				p.addToken(models.IDENTIFIER, word)
+				p.addTokenWithPosition(models.IDENTIFIER, word, p.line, startCol)
 			}
-			i--
+
+			i-- // Adjust for outer loop
+			p.column = startCol + len(word)
 			continue
 		}
 
+		// Handle operators and delimiters
+		startCol := p.column
 		if p.isOperator(char) {
-			p.addToken(models.OPERATOR, string(char))
+			// Check for multi-character operators
+			if i+1 < len(runes) {
+				twoChar := string(runes[i : i+2])
+				if p.isMultiCharOperator(twoChar) {
+					p.addTokenWithPosition(models.OPERATOR, twoChar, p.line, startCol)
+					i++ // Extra increment for two-char operator
+					p.column += 2
+					continue
+				}
+			}
+			p.addTokenWithPosition(models.OPERATOR, string(char), p.line, startCol)
 		} else if p.isDelimiter(char) {
-			p.addToken(models.DELIMITER, string(char))
+			p.addTokenWithPosition(models.DELIMITER, string(char), p.line, startCol)
 		} else {
-			p.addToken(models.UNKNOWN, string(char))
+			p.addTokenWithPosition(models.UNKNOWN, string(char), p.line, startCol)
 		}
+
 		p.column++
 	}
+
 	return p.tokens
+}
+
+func (p *Parser) addTokenWithPosition(tokenType models.TokenType, value string, line, column int) {
+	token := models.Token{
+		Type:  tokenType,
+		Value: value,
+		Line:  line,
+		Col:   column,
+	}
+	p.tokens = append(p.tokens, token)
+}
+
+func (p *Parser) isMultiCharOperator(op string) bool {
+	multiCharOps := []string{
+		"==", "!=", "<=", ">=", "&&", "||", "++", "--", "+=", "-=",
+		"*=", "/=", "%=", "&=", "|=", "^=", "<<", ">>", "**", "//",
+		"::", "->", "=>", "??", "?.", "!!", "<-",
+	}
+
+	for _, mop := range multiCharOps {
+		if op == mop {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Parser) addToken(tokenType models.TokenType, value string) {
@@ -123,85 +272,6 @@ func (p *Parser) addToken(tokenType models.TokenType, value string) {
 		Line:  p.line,
 		Col:   p.column,
 	})
-}
-
-func (p *Parser) isKeyword(word string) bool {
-	keywords := []string{
-		// Go keywords (complete set)
-		"break", "case", "chan", "const", "continue", "default", "defer", "else",
-		"fallthrough", "for", "func", "go", "goto", "if", "import", "interface",
-		"map", "package", "range", "return", "select", "struct", "switch", "type", "var",
-		// Go built-in types and functions
-		"int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64",
-		"float32", "float64", "complex64", "complex128", "byte", "rune", "string", "bool",
-		"error", "make", "len", "cap", "new", "append", "copy", "delete", "panic", "recover",
-		"close", "nil", "iota",
-
-		// JavaScript keywords (complete set)
-		"async", "await", "class", "extends", "function", "let", "const", "var",
-		"try", "catch", "finally", "throw", "new", "this", "super", "static",
-		"get", "set", "of", "in", "instanceof", "typeof", "void", "delete",
-		"export", "import", "from", "as", "default", "with", "debugger",
-		// JavaScript built-ins and common identifiers
-		"console", "window", "document", "Array", "Object", "String", "Number",
-		"Boolean", "Date", "RegExp", "Math", "JSON", "Promise", "Symbol",
-		"undefined", "NaN", "Infinity", "prototype", "constructor",
-
-		// Java keywords (complete set)
-		"abstract", "assert", "boolean", "byte", "case", "catch", "char", "class",
-		"const", "continue", "default", "do", "double", "else", "enum", "extends",
-		"final", "finally", "float", "for", "goto", "if", "implements", "import",
-		"instanceof", "int", "interface", "long", "native", "new", "package",
-		"private", "protected", "public", "return", "short", "static", "strictfp",
-		"super", "switch", "synchronized", "this", "throw", "throws", "transient",
-		"try", "void", "volatile", "while",
-		// Java built-ins and common classes
-		"String", "System", "Object", "Integer", "Double", "Boolean", "Character",
-		"Math", "Thread", "Exception", "ArrayList", "HashMap", "List", "Map", "Set",
-
-		// Python keywords (complete set)
-		"False", "None", "True", "and", "as", "assert", "async", "await", "break",
-		"class", "continue", "def", "del", "elif", "else", "except", "finally",
-		"for", "from", "global", "if", "import", "in", "is", "lambda", "nonlocal",
-		"not", "or", "pass", "raise", "return", "try", "while", "with", "yield",
-		// Python built-ins
-		"int", "float", "str", "list", "dict", "tuple", "set", "bool", "bytes",
-		"len", "range", "enumerate", "zip", "map", "filter", "sorted", "sum",
-		"min", "max", "abs", "all", "any", "print", "input", "open", "type",
-		"isinstance", "hasattr", "getattr", "setattr", "__init__", "__str__", "__name__",
-
-		// SQL keywords (common across databases)
-		"SELECT", "FROM", "WHERE", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP",
-		"ALTER", "TABLE", "INDEX", "VIEW", "DATABASE", "SCHEMA", "PROCEDURE", "FUNCTION",
-		"TRIGGER", "JOIN", "INNER", "LEFT", "RIGHT", "FULL", "OUTER", "ON", "USING",
-		"GROUP", "BY", "HAVING", "ORDER", "ASC", "DESC", "LIMIT", "OFFSET", "UNION",
-		"INTERSECT", "EXCEPT", "ALL", "DISTINCT", "TOP", "INTO", "VALUES", "SET",
-		"AND", "OR", "NOT", "IN", "EXISTS", "BETWEEN", "LIKE", "IS", "NULL",
-		"PRIMARY", "KEY", "FOREIGN", "REFERENCES", "UNIQUE", "CHECK", "DEFAULT",
-		"AUTO_INCREMENT", "IDENTITY", "SERIAL", "CONSTRAINT", "CASCADE", "RESTRICT",
-		"GRANT", "REVOKE", "COMMIT", "ROLLBACK", "TRANSACTION", "BEGIN", "END",
-		"DECLARE", "CURSOR", "FETCH", "CLOSE", "DEALLOCATE", "EXEC", "EXECUTE",
-		// SQL data types
-		"VARCHAR", "CHAR", "TEXT", "INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT",
-		"DECIMAL", "NUMERIC", "FLOAT", "DOUBLE", "REAL", "BIT", "BOOLEAN", "BOOL",
-		"DATE", "TIME", "DATETIME", "TIMESTAMP", "YEAR", "BLOB", "CLOB", "BINARY",
-
-		// Common keywords across all languages
-		"if", "else", "for", "while", "do", "switch", "case", "default", "break",
-		"continue", "return", "true", "false", "null", "class", "function", "var",
-		"let", "const", "try", "catch", "throw", "new", "this", "super", "static",
-		"public", "private", "protected", "abstract", "final", "interface", "enum",
-		"extends", "implements", "import", "export", "package", "namespace", "using",
-		"include", "require", "module", "async", "await", "yield", "lambda", "def",
-		"end", "begin", "then", "when", "unless", "until", "loop", "match", "case",
-	}
-
-	for _, keyword := range keywords {
-		if strings.EqualFold(word, keyword) {
-			return true
-		}
-	}
-	return false
 }
 
 func (p *Parser) isOperator(char rune) bool {
@@ -216,6 +286,12 @@ func (p *Parser) isDelimiter(char rune) bool {
 
 func CountLines(code string) (total, blank, comment int) {
 	lines := strings.Split(code, "\n")
+
+	// Remove the last empty line if it exists due to trailing \n
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+
 	total = len(lines)
 	inBlockComment := false
 
@@ -227,12 +303,15 @@ func CountLines(code string) (total, blank, comment int) {
 			continue
 		}
 
-		if strings.Contains(trimmed, "*/") {
+		// Handle block comments
+		if strings.Contains(trimmed, "/*") && !inBlockComment {
 			inBlockComment = true
 		}
-		if strings.Contains(trimmed, "*/") {
+		if strings.Contains(trimmed, "*/") && inBlockComment {
 			inBlockComment = false
-			if strings.TrimSpace(strings.Split(trimmed, "*/")[1]) == "" {
+			// Check if there's any code after the closing comment
+			afterComment := strings.Split(trimmed, "*/")
+			if len(afterComment) > 1 && strings.TrimSpace(afterComment[1]) == "" {
 				comment++
 				continue
 			}
@@ -242,6 +321,7 @@ func CountLines(code string) (total, blank, comment int) {
 			continue
 		}
 
+		// Handle single-line comments
 		if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "#") {
 			comment++
 		}
@@ -283,6 +363,7 @@ func (p *Parser) CountKeyword(keyword string) int {
 	}
 	return count
 }
+
 func (p *Parser) GetComplexityTokens() []models.Token {
 	complexityKeywords := []string{
 		"if", "else", "elif", "for", "while", "switch", "case",
@@ -403,10 +484,12 @@ func (p *Parser) GetSecurityRiskyTokens() map[string][]models.Token {
 	return result
 }
 
-func (p *Parser) AnalyzeNestingDepth() int {
+func (p *Parser) AnalyzeNestingDepth(language models.Language) int {
 	maxDepth := 0
 	currentDepth := 0
-
+	if language == "python" {
+		return p.analyzeIndentationDepth()
+	}
 	for _, token := range p.tokens {
 		if token.Type == models.DELIMITER {
 			switch token.Value {
@@ -420,6 +503,37 @@ func (p *Parser) AnalyzeNestingDepth() int {
 					currentDepth--
 				}
 			}
+		}
+	}
+
+	return maxDepth
+}
+
+func (p *Parser) analyzeIndentationDepth() int {
+	lines := strings.Split(p.code, "\n")
+	maxDepth := 0
+
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue // Skip empty lines
+		}
+
+		// Count leading spaces/tabs
+		indentLevel := 0
+		for _, char := range line {
+			if char == ' ' {
+				indentLevel++
+			} else if char == '\t' {
+				indentLevel += 4 // Assume tab = 4 spaces
+			} else {
+				break
+			}
+		}
+
+		// Convert to logical nesting depth (assuming 4 spaces per level)
+		depth := indentLevel / 4
+		if depth > maxDepth {
+			maxDepth = depth
 		}
 	}
 

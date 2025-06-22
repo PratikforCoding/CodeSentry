@@ -62,7 +62,7 @@ func (ar *AnalysisRepository) GetAllAnalyses(language string) ([]models.Analysis
 }
 
 func (ar *AnalysisRepository) GetAnalysisByID(id string) (models.Analysis, error) {
-	collection := database.Client.Database("codecentry").Collection("analyses")
+	collection := database.Client.Database("codesentry").Collection("analyses")
 
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {

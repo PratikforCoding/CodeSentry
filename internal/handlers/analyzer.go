@@ -50,9 +50,9 @@ func (ah *AnalyzerHandler) AnalyzeComplexity(c *gin.Context) {
 		return
 	}
 	req.Options.CheckComplexity = true
-	req.Options.CheckSecurity = false
-	req.Options.CheckStyle = false
-	req.Options.CheckMetrics = false
+	//req.Options.CheckSecurity = false
+	//req.Options.CheckStyle = false
+	//req.Options.CheckMetrics = false
 
 	response := ah.analyzerService.AnalyzeCode(req)
 	c.JSON(http.StatusOK, gin.H{

@@ -10,3 +10,8 @@ type AnalyzeRequest struct {
 		CheckMetrics    bool `json:"check_metrics"`
 	} `json:"options"`
 }
+
+type UpdateAnalysisRequest struct {
+	Title string   `json:"title"`
+	Tags  []string `json:"tags"`
+}
