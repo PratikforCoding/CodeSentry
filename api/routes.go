@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/PratikforCoding/CodeSentry/internal/database"
 	"github.com/PratikforCoding/CodeSentry/internal/handlers"
 	"time"
 
@@ -21,8 +22,8 @@ func SetupRoutes() *gin.Engine {
 
 	router.GET("/health", handlers.HealthCheck)
 
-	analyzerHandler := handlers.NewAnalyzerHandler()
-	analysesHandler := handlers.NewAnalysesHandler()
+	analyzerHandler := handlers.NewAnalyzerHandler(database.Client.Database("codesentry"))
+	analysesHandler := handlers.NewAnalysesHandler(database.Client.Database("codesentry"))
 
 	v1 := router.Group("/api/v1")
 	{

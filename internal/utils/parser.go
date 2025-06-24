@@ -2,7 +2,6 @@ package utils
 
 import (
 	"github.com/PratikforCoding/CodeSentry/internal/models"
-	"log"
 	"regexp"
 	"strings"
 	"unicode"
@@ -17,7 +16,6 @@ type Parser struct {
 }
 
 func NewParser(code string) *Parser {
-	log.Println("Debug: creating tokenizer")
 	return &Parser{
 		code:   code,
 		tokens: make([]models.Token, 0),
@@ -474,7 +472,7 @@ func (p *Parser) GetSecurityRiskyTokens() map[string][]models.Token {
 			tokens := p.GetTokensByValue(keyword)
 			for _, token := range tokens {
 				// Check context to determine if it's actually risky
-				if p.isRiskyContext(token, keyword) {
+				if p.IsRiskyContext(token, keyword) {
 					result[category] = append(result[category], token)
 				}
 			}
@@ -593,7 +591,7 @@ func (p *Parser) getLineAndColumn(pos int) (int, int) {
 		return false
 	}
 */
-func (p *Parser) isRiskyContext(token models.Token, keyword string) bool {
+func (p *Parser) IsRiskyContext(token models.Token, keyword string) bool {
 	// Get the line containing the token
 	codeLines := strings.Split(p.code, "\n")
 	if token.Line <= len(codeLines) {

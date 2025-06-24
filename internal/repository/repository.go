@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"github.com/PratikforCoding/CodeSentry/internal/database"
 	"github.com/PratikforCoding/CodeSentry/internal/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -13,14 +12,25 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-type AnalysisRepository struct{}
+type AnalysisRepositoryInterface interface {
+	SaveAnalysis(req models.AnalyzeRequest, res models.AnalysisResponse) error
+	GetAllAnalyses(language string) ([]models.Analysis, error)
+	GetAnalysisByID(id string) (models.Analysis, error)
+	UpdateAnalysis(id string, updateReq models.UpdateAnalysisRequest) error
+	DeleteAnalysis(id string) error
+}
+type AnalysisRepository struct {
+	db *mongo.Database
+}
 
-func NewAnalysisRepository() *AnalysisRepository {
-	return &AnalysisRepository{}
+func NewAnalysisRepository(db *mongo.Database) *AnalysisRepository {
+	return &AnalysisRepository{
+		db: db,
+	}
 }
 
 func (ar *AnalysisRepository) SaveAnalysis(req models.AnalyzeRequest, res models.AnalysisResponse) error {
-	collection := database.Client.Database("codesentry").Collection("analyses")
+	collection := ar.db.Collection("analyses")
 
 	doc := bson.M{
 		"code":      req.Code,
@@ -35,7 +45,7 @@ func (ar *AnalysisRepository) SaveAnalysis(req models.AnalyzeRequest, res models
 }
 
 func (ar *AnalysisRepository) GetAllAnalyses(language string) ([]models.Analysis, error) {
-	collection := database.Client.Database("codesentry").Collection("analyses")
+	collection := ar.db.Collection("analyses")
 
 	// Build filter
 	filter := bson.M{}
@@ -62,7 +72,7 @@ func (ar *AnalysisRepository) GetAllAnalyses(language string) ([]models.Analysis
 }
 
 func (ar *AnalysisRepository) GetAnalysisByID(id string) (models.Analysis, error) {
-	collection := database.Client.Database("codesentry").Collection("analyses")
+	collection := ar.db.Collection("analyses")
 
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -73,7 +83,7 @@ func (ar *AnalysisRepository) GetAnalysisByID(id string) (models.Analysis, error
 	err = collection.FindOne(context.Background(), bson.M{"_id": objectID}).Decode(&analysis)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return models.Analysis{}, errors.New("analysis not found")
+			return models.Analysis{}, errors.New("not found")
 		}
 		return models.Analysis{}, err
 	}
@@ -82,7 +92,7 @@ func (ar *AnalysisRepository) GetAnalysisByID(id string) (models.Analysis, error
 }
 
 func (ar *AnalysisRepository) UpdateAnalysis(id string, updateReq models.UpdateAnalysisRequest) error {
-	collection := database.Client.Database("codesentry").Collection("analyses")
+	collection := ar.db.Collection("analyses")
 
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -115,14 +125,14 @@ func (ar *AnalysisRepository) UpdateAnalysis(id string, updateReq models.UpdateA
 	}
 
 	if result.MatchedCount == 0 {
-		return errors.New("analysis not found")
+		return errors.New("not found")
 	}
 
 	return nil
 }
 
 func (ar *AnalysisRepository) DeleteAnalysis(id string) error {
-	collection := database.Client.Database("codesentry").Collection("analyses")
+	collection := ar.db.Collection("analyses")
 
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -135,7 +145,7 @@ func (ar *AnalysisRepository) DeleteAnalysis(id string) error {
 	}
 
 	if result.DeletedCount == 0 {
-		return errors.New("analysis not found")
+		return errors.New("not found")
 	}
 
 	return nil

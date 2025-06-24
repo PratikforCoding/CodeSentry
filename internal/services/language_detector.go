@@ -46,9 +46,9 @@ func (ld *LanguageDetector) DetectLanguage(code string) models.Language {
 
 	maxScore := 0
 	detectedLang := models.Unknown
-
+	const minScoreThreshold = 10
 	for lang, score := range scores {
-		if score > maxScore {
+		if score > maxScore && score >= minScoreThreshold {
 			maxScore = score
 			detectedLang = lang
 		}
@@ -77,9 +77,9 @@ func (ld *LanguageDetector) cleanWord(word string) string {
 func (ld *LanguageDetector) getBestLanguage(scores map[models.Language]int) models.Language {
 	var bestLang models.Language
 	maxScore := 0
-
+	const minScoreThreshold = 10
 	for lang, score := range scores {
-		if score > maxScore {
+		if score > maxScore && score >= minScoreThreshold {
 			maxScore = score
 			bestLang = lang
 		}

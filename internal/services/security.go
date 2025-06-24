@@ -26,8 +26,8 @@ func (sa *SecurityAnalyzer) AnalyzeSecurity(code string) []models.SecurityIssue 
 				Type:        category,
 				Line:        token.Line,
 				Column:      token.Col,
-				Description: sa.getTokenSecurityDescription(category, token.Value),
-				Severity:    sa.getTokenSecuritySeverity(category),
+				Description: sa.GetTokenSecurityDescription(category, token.Value),
+				Severity:    sa.GetTokenSecuritySeverity(category),
 				Pattern:     token.Value,
 			}
 			issues = append(issues, issue)
@@ -39,7 +39,7 @@ func (sa *SecurityAnalyzer) AnalyzeSecurity(code string) []models.SecurityIssue 
 	return issues
 }
 
-func (sa *SecurityAnalyzer) getTokenSecurityDescription(category, tokenValue string) string {
+func (sa *SecurityAnalyzer) GetTokenSecurityDescription(category, tokenValue string) string {
 	descriptions := map[string]string{
 		"sql_operations":     "SQL operation detected - ensure input is sanitized",
 		"eval_functions":     "Dynamic code execution detected - potential code injection risk",
@@ -53,7 +53,7 @@ func (sa *SecurityAnalyzer) getTokenSecurityDescription(category, tokenValue str
 	return "Security-sensitive operation detected: " + tokenValue
 }
 
-func (sa *SecurityAnalyzer) getTokenSecuritySeverity(category string) string {
+func (sa *SecurityAnalyzer) GetTokenSecuritySeverity(category string) string {
 	severities := map[string]string{
 		"sql_operations":     "HIGH",
 		"eval_functions":     "CRITICAL",
@@ -79,8 +79,8 @@ func (sa *SecurityAnalyzer) analyzeComplexPatterns(code string) []models.Securit
 					Type:        issueType,
 					Line:        lineNum + 1,
 					Column:      0,
-					Description: sa.getSecurityDescription(issueType),
-					Severity:    sa.getSecuritySeverity(issueType),
+					Description: sa.GetSecurityDescription(issueType),
+					Severity:    sa.GetSecuritySeverity(issueType),
 					Pattern:     line,
 				}
 				issues = append(issues, issue)
@@ -91,7 +91,7 @@ func (sa *SecurityAnalyzer) analyzeComplexPatterns(code string) []models.Securit
 	return issues
 }
 
-func (sa *SecurityAnalyzer) getSecurityDescription(issueType string) string {
+func (sa *SecurityAnalyzer) GetSecurityDescription(issueType string) string {
 	descriptions := map[string]string{
 		"sql_injection":          "Potential SQL injection vulnerability detected",
 		"xss_vulnerability":      "Potential XSS vulnerability in DOM manipulation",
@@ -108,7 +108,7 @@ func (sa *SecurityAnalyzer) getSecurityDescription(issueType string) string {
 	return "Security issue detected"
 }
 
-func (sa *SecurityAnalyzer) getSecuritySeverity(issueType string) string {
+func (sa *SecurityAnalyzer) GetSecuritySeverity(issueType string) string {
 	severities := map[string]string{
 		"sql_injection":          "HIGH",
 		"xss_vulnerability":      "HIGH",

@@ -7,7 +7,7 @@ import (
 
 var SecurityPatterns = map[string]*regexp.Regexp{
 	// SQL Injection patterns
-	"sql_injection":     regexp.MustCompile(`(?i)(select|insert|update|delete|drop|create|alter)\s+.*(\+|concat|format).*['"]`),
+	"sql_injection":     regexp.MustCompile(`(?i)(select|insert|update|delete|drop|create|alter)(\s+.*(\+|concat|format).*['"])?`),
 	"sql_dynamic_query": regexp.MustCompile(`(?i)(query|execute|exec)\s*\(\s*['"].*\+.*['"]`),
 	"sql_string_concat": regexp.MustCompile(`(?i)(select|insert|update|delete)\s+.*\+\s*.*['"]`),
 
@@ -141,8 +141,8 @@ var StylePatterns = map[string]*regexp.Regexp{
 	"long_line":            regexp.MustCompile(`.{120,}`),
 	"trailing_whitespace":  regexp.MustCompile(`\s+$`),
 	"mixed_indentation":    regexp.MustCompile(`^(\t+ +| +\t+)`),
-	"snake_case_violation": regexp.MustCompile(`^[a-z]+([A-Z][a-z]*)+$`), // camelCase in snake_case context
-	"camel_case_violation": regexp.MustCompile(`^[a-z]+(_[a-z]+)+$`),     // snake_case in camelCase context
+	"snake_case_violation": regexp.MustCompile(`\b[a-z]+([A-Z][a-z]*)+\b`),
+	"camel_case_violation": regexp.MustCompile(`\b[a-z]+(_[a-z]+)+\b`),
 }
 
 var ComplexityPatterns = map[string]*regexp.Regexp{
@@ -183,6 +183,21 @@ func GetLanguageKeywords() map[models.Language][]string {
 			"public", "return", "short", "static", "strictfp", "super", "switch",
 			"synchronized", "this", "throw", "throws", "transient", "try", "void",
 			"volatile", "while",
+		},
+		models.SQL: {
+			"SELECT", "FROM", "WHERE", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP",
+			"ALTER", "TABLE", "INDEX", "VIEW", "DATABASE", "SCHEMA", "PROCEDURE", "FUNCTION",
+			"TRIGGER", "JOIN", "INNER", "LEFT", "RIGHT", "FULL", "OUTER", "ON", "USING",
+			"GROUP", "BY", "HAVING", "ORDER", "ASC", "DESC", "LIMIT", "OFFSET", "UNION",
+			"INTERSECT", "EXCEPT", "ALL", "DISTINCT", "TOP", "INTO", "VALUES", "SET",
+			"AND", "OR", "NOT", "IN", "EXISTS", "BETWEEN", "LIKE", "IS", "NULL",
+			"PRIMARY", "KEY", "FOREIGN", "REFERENCES", "UNIQUE", "CHECK", "DEFAULT",
+			"AUTO_INCREMENT", "IDENTITY", "SERIAL", "CONSTRAINT", "CASCADE", "RESTRICT",
+			"GRANT", "REVOKE", "COMMIT", "ROLLBACK", "TRANSACTION", "BEGIN", "END",
+			"DECLARE", "CURSOR", "FETCH", "CLOSE", "DEALLOCATE", "EXEC", "EXECUTE",
+			"VARCHAR", "CHAR", "TEXT", "INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT",
+			"DECIMAL", "NUMERIC", "FLOAT", "DOUBLE", "REAL", "BIT", "BOOLEAN", "BOOL",
+			"DATE", "TIME", "DATETIME", "TIMESTAMP", "YEAR", "BLOB", "CLOB", "BINARY",
 		},
 	}
 }

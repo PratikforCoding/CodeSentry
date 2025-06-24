@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 
 	"github.com/PratikforCoding/CodeSentry/internal/models"
@@ -9,17 +10,23 @@ import (
 )
 
 type AnalysesHandler struct {
-	analysisRepo *repository.AnalysisRepository
+	analysisRepo repository.AnalysisRepositoryInterface
 }
 
-func NewAnalysesHandler() *AnalysesHandler {
+func NewAnalysesHandlerWithRepo(repo repository.AnalysisRepositoryInterface) *AnalysesHandler {
 	return &AnalysesHandler{
-		analysisRepo: repository.NewAnalysisRepository(),
+		analysisRepo: repo,
+	}
+}
+
+func NewAnalysesHandler(db *mongo.Database) *AnalysesHandler {
+	return &AnalysesHandler{
+		analysisRepo: repository.NewAnalysisRepository(db),
 	}
 }
 
 func (ah *AnalysesHandler) GetAnalyses(c *gin.Context) {
-	
+
 	language := c.Query("language")
 
 	analyses, err := ah.analysisRepo.GetAllAnalyses(language)

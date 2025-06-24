@@ -4,24 +4,63 @@ import (
 	"github.com/PratikforCoding/CodeSentry/internal/models"
 	"github.com/PratikforCoding/CodeSentry/internal/repository"
 	"github.com/PratikforCoding/CodeSentry/internal/utils"
+	"go.mongodb.org/mongo-driver/mongo"
 	"strings"
 )
 
-type AnalyzerService struct {
-	languageDetector   *LanguageDetector
-	complexityAnalyzer *ComplexityAnalyzer
-	securityAnalyzer   *SecurityAnalyzer
-	styleAnalyzer      *StyleAnalyzer
-	repo               *repository.AnalysisRepository
+type LanguageDetectorInterface interface {
+	DetectLanguage(code string) models.Language
 }
 
-func NewAnalyzerService() *AnalyzerService {
+type ComplexityAnalyzerInterface interface {
+	AnalyzeComplexity(code string) int
+	CountFunctions(code string, lang models.Language) int
+	CalculateNestingDepth(code string, lang models.Language) int
+}
+
+type SecurityAnalyzerInterface interface {
+	AnalyzeSecurity(code string) []models.SecurityIssue
+}
+
+type StyleAnalyzerInterface interface {
+	AnalyzeStyle(code string) []models.StyleSuggestion
+}
+
+type AnalyzerService struct {
+	languageDetector   LanguageDetectorInterface
+	complexityAnalyzer ComplexityAnalyzerInterface
+	securityAnalyzer   SecurityAnalyzerInterface
+	styleAnalyzer      StyleAnalyzerInterface
+	repo               repository.AnalysisRepositoryInterface
+}
+
+func NewAnalyzerServiceWithDeps(
+	langDetector LanguageDetectorInterface,
+	complexityAnalyzer ComplexityAnalyzerInterface,
+	securityAnalyzer SecurityAnalyzerInterface,
+	styleAnalyzer StyleAnalyzerInterface,
+	repo repository.AnalysisRepositoryInterface,
+) *AnalyzerService {
+	return &AnalyzerService{
+		languageDetector:   langDetector,
+		complexityAnalyzer: complexityAnalyzer,
+		securityAnalyzer:   securityAnalyzer,
+		styleAnalyzer:      styleAnalyzer,
+		repo:               repo,
+	}
+}
+
+type AnalyzerServiceInterface interface {
+	AnalyzeCode(req models.AnalyzeRequest) models.AnalysisResponse
+}
+
+func NewAnalyzerService(db *mongo.Database) *AnalyzerService {
 	return &AnalyzerService{
 		languageDetector:   NewLanguageDetector(),
 		complexityAnalyzer: NewComplexityAnalyzer(),
 		securityAnalyzer:   NewSecurityAnalyzer(),
 		styleAnalyzer:      NewStyleAnalyzer(),
-		repo:               repository.NewAnalysisRepository(),
+		repo:               repository.NewAnalysisRepository(db),
 	}
 }
 
