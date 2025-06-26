@@ -28,7 +28,7 @@ jobs:
         run: go build -o bin/server cmd/server/main.go
 
       - name: Build and start services with Docker Compose
-        run: docker-compose up --build -d
+        run: docker compose up --build -d
 
       - name: Wait for API to be ready
         run: |
@@ -45,7 +45,7 @@ jobs:
           exit 1
 
       - name: Run tests inside API container
-        run: docker-compose exec codesentry-api go test -v ./...
+        run: docker compose exec codesentry-api go test -v ./...
 
       # Keploy integration starts here
       - name: Install Keploy CLI
@@ -60,7 +60,7 @@ jobs:
           keploy test-suite --app=dcfa8d58-e06c-449f-baa1-6a239e95e616 --base-path=http://localhost:8080/api/v1 --cloud
 
       - name: Stop and remove containers
-        run: docker-compose down
+        run: docker compose down
 
       - name: Clean workspace
         run: |
