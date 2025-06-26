@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+
+      - name: Build Go dependencies
+        run: go mod download
+
+      - name: Build Go application
+        run: go build -o bin/server cmd/server/main.go
+
+      - name: Build and start services with Docker Compose
+        run: docker-compose up --build -d
+
+      - name: Wait for API to be ready
+        run: |
+          for i in {1..15}; do
+            if curl -s http://localhost:8080/health; then
+              echo "API is up"
+              exit 0
+            else
+              echo "Waiting for API..."
+              sleep 5
+            fi
+          done
+          echo "API did not start in time"
+          exit 1
+
+      - name: Run tests inside API container
+        run: docker-compose exec codesentry-api go test -v ./...
+
+      # Keploy integration starts here
+      - name: Install Keploy CLI
+        run: |
+          curl --silent --location "https://github.com/keploy/keploy/releases/latest/download/keploy_linux_amd64.tar.gz" | tar xz --overwrite -C /tmp
+          sudo mkdir -p /usr/local/bin && sudo mv /tmp/keploy /usr/local/bin/keploy
+
+      - name: Run Keploy Test Suite
+        env:
+          KEPLOY_API_KEY: ${{ secrets.KEPLOY_API_KEY }}
+        run: |
+          keploy test-suite --app=dcfa8d58-e06c-449f-baa1-6a239e95e616 --base-path=http://localhost:8080/api/v1 --cloud
+
+      - name: Stop and remove containers
+        run: docker-compose down
+
+      - name: Clean workspace
+        run: |
+          rm -rf bin/
+          docker system prune -f

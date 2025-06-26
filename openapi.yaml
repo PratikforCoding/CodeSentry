@@ -1,0 +1,247 @@
+openapi: 3.0.3
+info:
+  title: CodeSentry API
+  description: Static code analysis API for security, complexity, style, and metrics.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+paths:
+  /analyze:
+    post:
+      summary: Complete code analysis with all checks enabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - language
+                - options
+              properties:
+                code:
+                  type: string
+                  description: Source code to analyze
+                language:
+                  type: string
+                  description: Programming language of the code
+                  example: go
+                options:
+                  type: object
+                  properties:
+                    check_security:
+                      type: boolean
+                    check_style:
+                      type: boolean
+                    check_complexity:
+                      type: boolean
+                    check_metrics:
+                      type: boolean
+      responses:
+        '200':
+          description: Analysis results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysisId:
+                    type: string
+                    description: Unique ID of the analysis
+                  results:
+                    type: object
+                    description: Detailed analysis results
+        '400':
+          description: Invalid request
+
+  /analyze/security:
+    post:
+      summary: Security-focused analysis only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Source code to analyze for security issues
+      responses:
+        '200':
+          description: Security analysis results
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid request
+
+  /analyze/complexity:
+    post:
+      summary: Complexity analysis only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Source code to analyze for complexity
+      responses:
+        '200':
+          description: Complexity analysis results
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid request
+
+  /analyze/style:
+    post:
+      summary: Style and formatting analysis only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Source code to analyze for style issues
+      responses:
+        '200':
+          description: Style analysis results
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid request
+
+  /analyses:
+    get:
+      summary: Retrieve all stored analyses with pagination
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: Number of items per page
+      responses:
+        '200':
+          description: List of analyses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    language:
+                      type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+
+  /analyses/{id}:
+    get:
+      summary: Get a specific analysis by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Analysis ID
+      responses:
+        '200':
+          description: Analysis details
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Analysis not found
+    put:
+      summary: Update an existing analysis
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Updated analysis
+        '404':
+          description: Analysis not found
+    delete:
+      summary: Delete an analysis
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Analysis deleted
+        '404':
+          description: Analysis not found
+
+  /languages:
+    get:
+      summary: Get list of supported programming languages
+      responses:
+        '200':
+          description: Supported languages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /health:
+    get:
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: Service status
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
