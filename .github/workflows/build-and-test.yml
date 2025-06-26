@@ -44,8 +44,8 @@ jobs:
           echo "API did not start in time"
           exit 1
 
-      - name: Run tests inside API container
-        run: docker compose exec codesentry-api go test -v ./...
+      - name: Run tests locally via Go CLI
+        run: go test -v ./...
 
       # Keploy integration starts here
       - name: Install Keploy CLI
