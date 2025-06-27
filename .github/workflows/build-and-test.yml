@@ -53,10 +53,9 @@ jobs:
           curl --silent -L https://keploy.io/ent/install.sh | bash
 
       - name: Run Keploy Test Suite
-        env:
-          KEPLOY_API_KEY: ${{ secrets.KEPLOY_API_KEY }}
         run: |
-          keploy test --app-name=dcfa8d58-e06c-449f-baa1-6a239e95e616 --base-path=http://localhost:8080/api/v1 --delay=10
+          export KEPLOY_API_KEY=${{ secrets.KEPLOY_API_KEY }}
+          keploy test-suite --app=dcfa8d58-e06c-449f-baa1-6a239e95e616 --base-path http://localhost:8080/api/v1 --cloud
 
       - name: Stop and remove containers
         run: docker compose down
