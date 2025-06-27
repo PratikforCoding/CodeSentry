@@ -429,6 +429,18 @@ var CustomSecurityPatterns = map[string]*regexp.Regexp{
 }
 ```
 
+## 🧪 API Testing with Keploy
+
+Keploy makes API testing easy by recording and replaying requests as test cases. We can also generate API tests from OpenAPI Schema and curl requests.
+
+### Example Test Results
+
+![Keploy Test Result](assets/KEPLOY_dashboard.png)
+
+### Below is the result of successful github Actions pipeline integration
+![Keploy_ci_result](assets/workflow_pass.png)
+
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
